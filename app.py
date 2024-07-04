@@ -6,31 +6,31 @@ from collections import Counter
 st.title('AGM App')
 
 # Upload NRIC in Attendance file
-# st.header('Upload NRIC in Attendance File')
-# uploaded_attendance_file = st.file_uploader('Choose an Excel file for NRIC in Attendance', type=['xlsx'])
+st.header('Upload NRIC in Attendance File')
+uploaded_attendance_file = st.file_uploader('Choose an Excel file for NRIC in Attendance', type=['xlsx'])
 
-# # Upload Response Data file
-# st.header('Upload Response Data File')
-# uploaded_response_file = st.file_uploader('Choose an Excel file for Response Data', type=['xlsx'])
+# Upload Response Data file
+st.header('Upload Response Data File')
+uploaded_response_file = st.file_uploader('Choose an Excel file for Response Data', type=['xlsx'])
 
-# if uploaded_attendance_file and uploaded_response_file:
-#     # Load the uploaded files into DataFrames
-#     attendance_df = pd.read_excel(uploaded_attendance_file, engine='openpyxl')
-#     response_df = pd.read_excel(uploaded_response_file, engine='openpyxl')
+if uploaded_attendance_file and uploaded_response_file:
+    # Load the uploaded files into DataFrames
+    attendance_df = pd.read_excel(uploaded_attendance_file, engine='openpyxl')
+    response_df = pd.read_excel(uploaded_response_file, engine='openpyxl')
 
-# else:
-#     st.warning('Please upload both Excel files.')
-#     st.stop()
+else:
+    st.warning('Please upload both Excel files.')
+    st.stop()
 
 
-attendance_file = 'data/nric-attendance-masterlist.xlsx'
-attendance_df = pd.read_excel(attendance_file)
+# attendance_file = 'data/nric-attendance-masterlist.xlsx'
+# attendance_df = pd.read_excel(attendance_file)
 
 attendance_nric_col = [col for col in attendance_df.columns if 'nric' in col.lower()][0]
 attendance_df = attendance_df[[attendance_nric_col]].dropna(axis=0)
 
-response_file = './data/responses.xlsx'
-response_df = pd.read_excel(response_file)
+# response_file = './data/responses.xlsx'
+# response_df = pd.read_excel(response_file)
 
 nric_col = [col for col in response_df.columns if 'nric' in col.lower()]
 assert len(nric_col) == 1
@@ -197,16 +197,17 @@ for q_num, full_q in sorted(unique_questions_dict.items(), key=lambda x: x[0]):
         question_cols = [q[1] for q in questions if q[0] == q_num]
         all_vals = final_df[question_cols].values.flatten()
         vals_counter = sorted(Counter(all_vals).items(), key=lambda x: -x[1])
+        vals_counter = [c for c in vals_counter if c[0] != 'ABSTAIN']
         result_data = []
         print(vals_counter)
         for counter in vals_counter:
 
-            if 'abstain' not in counter[0].lower():
-                result_data.append({
-                    'Option': counter[0].upper(),
-                    'Count': counter[1],
-                    'Percentage (%)': round(100 * counter[1] / total_present)
-                })
+            # if 'abstain' not in counter[0].lower():
+            result_data.append({
+                'Option': counter[0].upper(),
+                'Count': counter[1],
+                'Percentage (%)': round(100 * counter[1] / total_present)
+            })
             # else:
             #     abstain += counter[1]
 
