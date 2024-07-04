@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+from collections import Counter
+
 
 st.title('AGM App')
 
@@ -21,25 +23,28 @@ else:
     st.stop()
 
 
-
-import pandas as pd
-from collections import Counter
-
-nric_col = 'nric'
-
 # attendance_file = 'data/nric-in-attendance.xlsx'
 # attendance_df = pd.read_excel(attendance_file)
-# attendance_df = attendance_df[[nric_col]].dropna(axis=0)
+
+attendance_nric_col = [col for col in attendance_df.columns if 'nric' in col.lower()][0]
+attendance_df = attendance_df[[attendance_nric_col]].dropna(axis=0)
 
 # response_file = './data/responses.xlsx'
 # response_df = pd.read_excel(response_file)
 
+nric_col = [col for col in response_df.columns if 'nric' in col.lower()]
+assert len(nric_col) == 1
+nric_col = nric_col[0]
+
 # do nric filtering
 
 valid_nric = attendance_df.values.flatten()
-invalid_nric = [nric for nric in response_df['nric'].values if nric not in valid_nric]
+valid_nric = list(set([nric.upper() for nric in valid_nric]))
+total_present = len(valid_nric)
+response_df[nric_col] = response_df[nric_col].apply(lambda x: x.upper())
+invalid_nric = [nric for nric in response_df[nric_col].values if nric not in valid_nric]
 
-response_df_valid_nric_df = response_df[response_df['nric'].isin(valid_nric)]
+response_df_valid_nric_df = response_df[response_df[nric_col].isin(valid_nric)]
 
 # Get the count of each id
 id_counts = response_df[nric_col].value_counts()
@@ -94,33 +99,115 @@ output_string = (
 )
 
 
-results_string = '## Results\n\n'
+# results_string = '## Results\n\n'
+# for q_num, full_q in sorted(unique_questions_dict.items(), key=lambda x: x[0]):
+#     abstain = total_present - len(final_df)
+#     results_string += full_q + '\n\n'
+#     if q_num in single_choice_questions:
+#         counts = sorted(list(final_df[[full_q]].groupby(full_q).size().items()), key=lambda x: -x[1])
+#         for count in counts:
+#             if 'abstain' not in count[0].lower():
+#                 results_string += 'Option: ' + count[0] + '\n'
+#                 results_string += 'Count: ' + str(count[1]) + '\n'
+#                 results_string += 'Percentage: ' + str(round(100 * count[1] / total_present, 1)) + ' % \n\n'
+#             else:
+#                 abstain += count[1]
+#         results_string += f'Option: Abstain\n'
+#         results_string += f'Count: {abstain}\n'
+#         results_string += f'Percentage: ' + str(round(100 * abstain / total_present, 1)) + ' % \n\n'
+
+#         results_string += f'The majority decision is {counts[0][0]} with {counts[0][1]} votes.\n'
+#     elif q_num in [x[0] for x in multi_choice_questions_with_counts]:
+#         question_cols = [q[1] for q in questions if q[0] == q_num]
+#         all_vals = final_df[question_cols].values.flatten()
+#         vals_counter = sorted(Counter(all_vals).items(), key=lambda x: -x[1])
+#         for counter in vals_counter:
+#             if 'abstain' not in count[0].lower():
+#                 results_string += 'Option: ' + counter[0] + '\n'
+#                 results_string += 'Count: ' + str(counter[1]) + '\n'
+#                 results_string += 'Percentage: ' + str(round(100 * counter[1] / total_present, 1)) + ' % \n\n'
+#             else:
+#                 abstain += counter[1]
+
+#         results_string += f'Option: Abstain\n'
+#         results_string += f'Count: {abstain}\n'
+#         results_string += f'Percentage: ' + str(round(100 * abstain / total_present, 1)) + ' % \n\n'
+
+#         num_choices = [x[1] for x in multi_choice_questions_with_counts if x[0] == q_num][0]
+#         results = vals_counter[:num_choices]
+#         results = [x[0] for x in results]
+#         results_string += f'The top {num_choices} options with the most votes are {results}\n'
+#     else:
+#         results_string += 'ERROR\n'
+
+#     results_string += '\n\n\n\n'
+
+# final_string = output_string + results_string
+
+# st.write(final_string)
+
 for q_num, full_q in sorted(unique_questions_dict.items(), key=lambda x: x[0]):
-    results_string += full_q + '\n\n'
+    abstain = total_present - len(final_df)
+    st.header(full_q.upper())
+    
     if q_num in single_choice_questions:
         counts = sorted(list(final_df[[full_q]].groupby(full_q).size().items()), key=lambda x: -x[1])
+        result_data = []
+        
+        running_sum = 0
         for count in counts:
-            results_string += 'Option: ' + count[0] + '\n'
-            results_string += 'Count: ' + str(count[1]) + '\n'
-            results_string += 'Percentage: ' + str(round(100 * count[1] / len(final_df), 1)) + ' % \n\n'
-        results_string += f'The majority decision is {counts[0][0]} with {counts[0][1]} votes.\n'
+            if 'abstain' not in count[0].lower():
+                result_data.append({
+                    'Option': count[0].upper(),
+                    'Count': count[1],
+                    'Percentage (%)': round(100 * count[1] / total_present)
+                })
+            else:
+                abstain += count[1]
+        
+        result_data.append({
+            'Option': 'ABSTAIN',
+            'Count': abstain,
+            'Percentage (%)': round(100 * abstain / total_present)
+        })
+        
+        results_df = pd.DataFrame(result_data)
+        st.table(results_df)
+        
+        majority_decision = counts[0][0].upper()
+        majority_count = counts[0][1]
+        st.write(f'THE MAJORITY DECISION IS {majority_decision} WITH {majority_count} VOTES.')
+    
     elif q_num in [x[0] for x in multi_choice_questions_with_counts]:
         question_cols = [q[1] for q in questions if q[0] == q_num]
         all_vals = final_df[question_cols].values.flatten()
         vals_counter = sorted(Counter(all_vals).items(), key=lambda x: -x[1])
+        result_data = []
+        
         for counter in vals_counter:
-            results_string += 'Option: ' + counter[0] + '\n'
-            results_string += 'Count: ' + str(counter[1]) + '\n'
-            results_string += 'Percentage: ' + str(round(100 * counter[1] / len(final_df), 1)) + ' % \n\n'
+            if 'abstain' not in counter[0].lower():
+                result_data.append({
+                    'Option': counter[0].upper(),
+                    'Count': counter[1],
+                    'Percentage (%)': round(100 * counter[1] / total_present)
+                })
+            else:
+                abstain += counter[1]
+
+        result_data.append({
+            'Option': 'ABSTAIN',
+            'Count': abstain,
+            'Percentage (%)': round(100 * abstain / total_present)
+        })
+        
+        results_df = pd.DataFrame(result_data)
+        st.table(results_df)
+
         num_choices = [x[1] for x in multi_choice_questions_with_counts if x[0] == q_num][0]
-        results = vals_counter[:num_choices]
-        results = [x[0] for x in results]
-        results_string += f'The top {num_choices} options with the most votes are {results}\n'
+        top_results = vals_counter[:num_choices]
+        top_results = [x[0].upper() for x in top_results]
+        st.write(f'THE TOP {num_choices} OPTIONS WITH THE MOST VOTES ARE {top_results}.')
+    
     else:
-        results_string += 'ERROR\n'
+        st.write('ERROR')
 
-    results_string += '\n\n\n\n'
-
-final_string = output_string + results_string
-
-st.write(final_string)
