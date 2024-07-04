@@ -6,31 +6,31 @@ from collections import Counter
 st.title('AGM App')
 
 # Upload NRIC in Attendance file
-st.header('Upload NRIC in Attendance File')
-uploaded_attendance_file = st.file_uploader('Choose an Excel file for NRIC in Attendance', type=['xlsx'])
+# st.header('Upload NRIC in Attendance File')
+# uploaded_attendance_file = st.file_uploader('Choose an Excel file for NRIC in Attendance', type=['xlsx'])
 
-# Upload Response Data file
-st.header('Upload Response Data File')
-uploaded_response_file = st.file_uploader('Choose an Excel file for Response Data', type=['xlsx'])
+# # Upload Response Data file
+# st.header('Upload Response Data File')
+# uploaded_response_file = st.file_uploader('Choose an Excel file for Response Data', type=['xlsx'])
 
-if uploaded_attendance_file and uploaded_response_file:
-    # Load the uploaded files into DataFrames
-    attendance_df = pd.read_excel(uploaded_attendance_file, engine='openpyxl')
-    response_df = pd.read_excel(uploaded_response_file, engine='openpyxl')
+# if uploaded_attendance_file and uploaded_response_file:
+#     # Load the uploaded files into DataFrames
+#     attendance_df = pd.read_excel(uploaded_attendance_file, engine='openpyxl')
+#     response_df = pd.read_excel(uploaded_response_file, engine='openpyxl')
 
-else:
-    st.warning('Please upload both Excel files.')
-    st.stop()
+# else:
+#     st.warning('Please upload both Excel files.')
+#     st.stop()
 
 
-# attendance_file = 'data/nric-in-attendance.xlsx'
-# attendance_df = pd.read_excel(attendance_file)
+attendance_file = 'data/nric-attendance-masterlist.xlsx'
+attendance_df = pd.read_excel(attendance_file)
 
 attendance_nric_col = [col for col in attendance_df.columns if 'nric' in col.lower()][0]
 attendance_df = attendance_df[[attendance_nric_col]].dropna(axis=0)
 
-# response_file = './data/responses.xlsx'
-# response_df = pd.read_excel(response_file)
+response_file = './data/responses.xlsx'
+response_df = pd.read_excel(response_file)
 
 nric_col = [col for col in response_df.columns if 'nric' in col.lower()]
 assert len(nric_col) == 1
@@ -98,6 +98,8 @@ output_string = (
 
 )
 
+st.write(output_string)
+
 
 # results_string = '## Results\n\n'
 # for q_num, full_q in sorted(unique_questions_dict.items(), key=lambda x: x[0]):
@@ -146,6 +148,21 @@ output_string = (
 
 # st.write(final_string)
 
+# for q_num in single_choice_questions:
+#     relevant_col = [col for col in final_df.columns if col.startswith(q_num+'. ')][0]
+#     final_df[relevant_col] = final_df[relevant_col].fillna('ABSTAIN')
+
+
+# for q_num in [x[0] for x in multi_choice_questions_with_counts]:
+#     relevant_cols = [col for col in final_df.columns if col.startswith(q_num+'. ')]
+#     for index, row in final_df.iterrows():
+#         if row[relevant_cols].isnull().any():
+#             final_df.loc[index, relevant_cols] = 'ABSTAIN'
+
+final_df = final_df.fillna('ABSTAIN')
+
+print(final_df)
+
 for q_num, full_q in sorted(unique_questions_dict.items(), key=lambda x: x[0]):
     abstain = total_present - len(final_df)
     st.header(full_q.upper())
@@ -154,17 +171,15 @@ for q_num, full_q in sorted(unique_questions_dict.items(), key=lambda x: x[0]):
         counts = sorted(list(final_df[[full_q]].groupby(full_q).size().items()), key=lambda x: -x[1])
         result_data = []
         
-        running_sum = 0
         for count in counts:
-            if 'abstain' not in count[0].lower():
+            if 'ABSTAIN' not in count[0]:
                 result_data.append({
-                    'Option': count[0].upper(),
-                    'Count': count[1],
-                    'Percentage (%)': round(100 * count[1] / total_present)
+                        'Option': count[0].upper(),
+                        'Count': count[1],
+                        'Percentage (%)': round(100 * count[1] / total_present)
                 })
             else:
                 abstain += count[1]
-        
         result_data.append({
             'Option': 'ABSTAIN',
             'Count': abstain,
@@ -183,22 +198,23 @@ for q_num, full_q in sorted(unique_questions_dict.items(), key=lambda x: x[0]):
         all_vals = final_df[question_cols].values.flatten()
         vals_counter = sorted(Counter(all_vals).items(), key=lambda x: -x[1])
         result_data = []
-        
+        print(vals_counter)
         for counter in vals_counter:
+
             if 'abstain' not in counter[0].lower():
                 result_data.append({
                     'Option': counter[0].upper(),
                     'Count': counter[1],
                     'Percentage (%)': round(100 * counter[1] / total_present)
                 })
-            else:
-                abstain += counter[1]
+            # else:
+            #     abstain += counter[1]
 
-        result_data.append({
-            'Option': 'ABSTAIN',
-            'Count': abstain,
-            'Percentage (%)': round(100 * abstain / total_present)
-        })
+        # result_data.append({
+        #     'Option': 'ABSTAIN',
+        #     'Count': abstain,
+        #     'Percentage (%)': round(100 * abstain / total_present)
+        # })
         
         results_df = pd.DataFrame(result_data)
         st.table(results_df)
